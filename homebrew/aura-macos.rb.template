@@ -1,0 +1,53 @@
+# Fórmula de Homebrew para Aura (macOS). La genera scripts/make-formula.sh
+# a partir de esta plantilla: no la edites a mano en el tap.
+class AuraMacos < Formula
+  desc "Fondos de pantalla animados nativos para macOS (port de Aura)"
+  homepage "https://github.com/__USER__/__REPO__"
+  url "https://github.com/__USER__/__REPO__/archive/refs/tags/__TAG__.tar.gz"
+  sha256 "__SHA256__"
+  license "GPL-3.0-or-later"
+  head "https://github.com/__USER__/__REPO__.git", branch: "main"
+
+  depends_on macos: :sonoma
+
+  def install
+    # SwiftPM no puede usar su sandbox dentro del sandbox de Homebrew.
+    ENV["AURA_SWIFT_FLAGS"] = "--disable-sandbox"
+    system "./scripts/build.sh"
+    prefix.install "build/Aura.app"
+    bin.install_symlink prefix/"Aura.app/Contents/Helpers/aura"
+  end
+
+  def post_install
+    # Registra la app en macOS para que el sistema la encuentre por su identificador.
+    quiet_system "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \
+                 "LaunchServices.framework/Support/lsregister", "-f", (opt_prefix/"Aura.app").to_s
+  end
+
+  service do
+    run [opt_prefix/"Aura.app/Contents/MacOS/Aura", "--daemon"]
+    run_type :immediate
+    keep_alive false
+  end
+
+  def caveats
+    <<~EOS
+      Aura se instaló en:
+        #{opt_prefix}/Aura.app
+
+      Para abrirla:            aura
+      Para verla en Launchpad y Spotlight:
+        ln -sf #{opt_prefix}/Aura.app ~/Applications/Aura.app
+
+      Para que se abra al iniciar sesión (se mantiene al actualizar):
+        brew services start aura-macos
+
+      Opcional, para reproducir videos WebM, MKV o AVI:
+        brew install ffmpeg
+    EOS
+  end
+
+  test do
+    assert_match "aura", shell_output("#{bin}/aura --version")
+  end
+end

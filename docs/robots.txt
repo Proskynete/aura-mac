@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://antwny.github.io/aura/sitemap.xml

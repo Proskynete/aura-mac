@@ -1,35 +1,21 @@
-# Rust build artifacts
-/target/
-**/*.rs.bk
-*.lprof
+# Compilación de Swift
+.build/
+build/
+.swiftpm/
+*.xcodeproj
+xcuserdata/
 
-# IDE and Editor files
+# Fórmula generada (vive en el tap homebrew-aura)
+homebrew/Formula/
+
+# Editores y sistema
 .idea/
 .vscode/
 *.swp
-*.swo
 *~
-*.bak
-.directory
-
-# Operating System files
 .DS_Store
-Thumbs.db
 
-# Logs & Temporary files
+# Archivos locales
 *.log
-scratch/
 .env
-
-# Local test media / caches
-local_tests/
-
-# Flatpak build artifacts
-packaging/flatpak/.flatpak-builder/
-packaging/flatpak/builddir/
-packaging/flatpak/repo/
-.flatpak-builder/
-repo/
-builddir/
-packaging/mpvpaper
-
+.zsh_history_project

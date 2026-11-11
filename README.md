@@ -1,192 +1,164 @@
-<div align="center">
+# Aura para macOS
 
-<img src="docs/assets/img/logo.svg" alt="Aura Logo" width="100" height="100" />
+> **Fork no oficial de [antwny/aura](https://github.com/antwny/aura).** Aura fue creada por **Antwny** para Linux (COSMIC); este repositorio nació como su versión para macOS y reemplaza aquel código por una implementación nativa en Swift. El historial de git conserva el proyecto original. Todo el mérito del diseño es de su autor: si usas Linux, usa el [proyecto original](https://github.com/antwny/aura). En [`NOTICE.md`](NOTICE.md) está el detalle de qué cambió.
 
-# Aura
+Port nativo para macOS de Aura, el gestor de fondos animados para el escritorio COSMIC de Pop!_OS. Está reescrito en Swift con AVFoundation, AppKit y SwiftUI. No usa Wayland, mpv ni D-Bus: cada pieza se reemplazó por su equivalente de Apple.
 
-### The definitive live wallpaper engine for COSMIC Desktop.
-*(With experimental GNOME and KDE Plasma support, plus generic Wayland layer-shell compositors)*
+Las herramientas de línea de comandos de Xcode bastan para compilarlo: no necesitas Xcode completo.
 
-**Transform your COSMIC and Wayland workspace (including Niri, Hyprland and Sway) with fluid animated backgrounds, dynamic desktop color matching, and zero lag when gaming. GNOME and KDE Plasma backends are experimental.**
+## Requisitos
 
-[![Release](https://img.shields.io/github/v/release/antwny/aura?style=for-the-badge&logo=github&color=blue)](https://github.com/antwny/aura/releases)
-[![COSMIC Desktop](https://img.shields.io/badge/COSMIC-Desktop-4B2E83.svg?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/pop-os/libcosmic)
-[![Wayland Layer-Shell](https://img.shields.io/badge/Wayland-Layer--Shell-1E3A8A.svg?style=for-the-badge&logo=wayland&logoColor=white)](https://wayland.freedesktop.org/)
-[![GNOME Experimental](https://img.shields.io/badge/GNOME-Experimental-4A86CF.svg?style=for-the-badge&logo=gnome&logoColor=white)](https://www.gnome.org/)
-[![KDE Experimental](https://img.shields.io/badge/KDE-Experimental-1D99F3.svg?style=for-the-badge&logo=kde&logoColor=white)](https://kde.org/plasma-desktop/)
-[![Smart Pause](https://img.shields.io/badge/Smart_Pause-0%25_GPU_in_Games-success.svg?style=for-the-badge)](#-smart-auto-pause-0-gpu--cpu-in-games)
-[![Open Source](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=for-the-badge)](LICENSE)
-[![Donate](https://img.shields.io/badge/Donate-PayPal-00457C.svg?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.com/donate/?business=antwnyab@gmail.com&no_recurring=0&currency_code=USD)
+- macOS 14 Sonoma o superior (Apple Silicon o Intel).
+- Herramientas de línea de comandos de Xcode: `xcode-select --install`. Xcode completo no es necesario.
+- Opcional: `brew install ffmpeg`, solo para reproducir videos WebM, MKV o AVI.
 
-<br/>
+## Instalar
 
-### ⚡ Quick Install (One Command)
+### Con Homebrew (recomendado)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/antwny/aura/main/install.sh | bash
+brew install --cask proskynete/aura/aura
 ```
 
-*The release archive includes the precompiled `mpvpaper` video engine. Aura is designed for COSMIC Desktop and Wayland layer-shell compositors (such as Niri, Hyprland, and Sway); GNOME and KDE Plasma backends are experimental.*
+Instala `Aura.app` en `/Applications` y el comando `aura`. Para actualizar, usa `brew upgrade --cask aura`.
 
-> **Prerequisites for video playback & thumbnails:**
-> - **Arch / CachyOS**: `sudo pacman -S --needed mpv ffmpeg`
-> - **Pop!_OS / Ubuntu / Debian**: `sudo apt install -y libmpv2 ffmpeg`
-> - **Fedora**: `sudo dnf install -y mpv-libs ffmpeg-free`
-> - **openSUSE**: `sudo zypper install -y mpv ffmpeg`
+Aura todavía no está firmada con un certificado de Apple, así que la primera vez que la abras macOS la bloqueará. Para permitirla, ve a **Ajustes del Sistema → Privacidad y seguridad → "Abrir igualmente"**. También puedes hacerlo desde la terminal:
 
-<br/>
-
-<p align="center">
-  <a href="https://antwny.github.io/aura/assets/video/aura-showcase.mp4">
-    <img src="docs/assets/video/aura-showcase-preview.webp" alt="Aura showcase preview" width="96%" />
-  </a>
-</p>
-<p align="center"><sub><i>Live recording: COSMIC Desktop • Wayland Layer-Shell • Seamless MPV IPC Engine — click to play</i></sub></p>
-
-</div>
-
----
-
-## ✨ Features at a Glance
-
-- **Native Rust & Wayland Layer-Shell**: Smooth 60 FPS rendering with zero compositor tearing.
-- **Smart Auto-Pause (0% CPU / 0% GPU)**: Instantly halts video playback when windows cover the desktop or when launching fullscreen games.
-- **Online Catalogs**: Browse and download live and static wallpapers from MotionBGS, LiveWallpapers4Free (HD through 8K and ultrawide), Wallhaven, Bing Daily, and DenverCoder1.
-- **Dynamic Desktop Auto-Theming**: Automatically extracts color palettes from your wallpaper to theme COSMIC window borders, accents, and controls.
-- **Multi-Monitor Studio**: Set independent wallpapers, scaling modes (Fit, Fill, Stretch), and arrangements per screen with live hotplug support.
-- **Filtered Playlist Rotation**: Combine source (all/favorites) with type (live/static) and keep the exact pool visible before enabling rotation.
-- **Quick Switcher HUD**: Floating heads-up display overlay summonable from anywhere with a global shortcut.
-
----
-
-### ⚡ Quick Switcher HUD
-
-Summon a floating overlay anywhere on your desktop with `aura switcher`:
-
-<p align="center">
-  <a href="https://antwny.github.io/aura/assets/video/hud-showcase.mp4">
-    <img src="docs/assets/video/hud-poster.webp" alt="Aura Quick Switcher HUD Demo" width="94%" />
-  </a>
-</p>
-
-- **3 Visual Styles**:
-  - **Honeycomb HUD**: Geometric pointy-topped hexagon matrix with smooth camera lerp, hover expansion, and edge panning.
-  - **Cinematic HUD**: Tilted parallelogram cards with 3D perspective and ambient halo glow.
-  - **Classic Dock**: Minimalist dock bar with interactive hover pop-out and slide momentum.
-- **Cursor Awareness**: Spawns directly on the monitor where your mouse pointer is located.
-- **Fluid Navigation**: Arrow keys, `WASD`, mouse scroll, edge hover, and 1-click wallpaper apply.
-- **In-HUD Shortcuts**: <kbd>Space</kbd> to Pause/Resume, <kbd>F</kbd> for Favorites, <kbd>Esc</kbd> to dismiss.
-
----
-
-### 🎨 Dynamic Auto-Theming
-
-<p align="center">
-  <img src="docs/assets/img/library-amber.png" alt="Aura Dynamic Auto-Theming" width="94%" />
-</p>
-
-- **Harmonized Accents**: Shifts desktop accent colors to match wallpaper hues.
-- **WCAG Contrast**: Automatically verifies legible text contrast.
-- **Auto Dark / Light**: Adapts palette luminance according to the active background.
-
----
-
-### 🎮 Smart Auto-Pause: 0% GPU & CPU in Games
-
-<p align="center">
-  <img src="docs/assets/img/settings-performance.png" alt="Aura Performance Settings" width="94%" />
-</p>
-
-- **Window Occlusion**: Pauses playback when any application window covers the desktop.
-- **Fullscreen Games**: Frees 100% of GPU and CPU resources for maximum gaming FPS.
-- **Battery Saver**: Automatically halts video playback when unplugged to preserve laptop battery.
-- **Audio Control**: Built-in volume slider and instant mute toggle.
-
----
-
-### 🖥️ GNOME Desktop Support (Wayland) — Experimental
-
-Aura includes experimental support for GNOME on Wayland:
-
-- **Automatic Detection**: Aura detects `XDG_CURRENT_DESKTOP=GNOME` and selects the appropriate backend automatically (override with `AURA_BACKEND=gnome|mpvpaper`).
-- **Static Wallpapers**: Applied natively via GSettings (`org.gnome.desktop.background`).
-- **Live Video Wallpapers**: Powered by the [Hanabi GNOME Shell extension](https://github.com/jeffshee/gnome-ext-hanabi) (`gnome-ext-hanabi`). Aura communicates with Hanabi over D-Bus for synchronized playback, volume, and scaling controls.
-- **Interactive HUD**: Runs via borderless toplevel windows (note: background may appear opaque/dark due to Mutter's lack of the Wayland layer-shell protocol).
-- **Icon Fallback**: Navigation and window-control icons are bundled into a temporary hicolor overlay, with automatic Adwaita fallback when the Cosmic icon theme is not installed.
-
----
-
-### 🖥️ KDE Plasma Support (Wayland & X11) — Experimental
-
-KDE Plasma support is experimental. KWin keeps Plasma's desktop containment above wlr-layer-shell surfaces, so mpvpaper cannot draw a visible video on Plasma. Aura talks to Plasma's own wallpaper API over D-Bus instead:
-
-- **Native Detection**: `XDG_CURRENT_DESKTOP=KDE` selects the Plasma backend automatically. The Settings screen shows the real desktop environment and a manual backend selector (`Auto`, `mpvpaper`, `GNOME`, `KDE`, `Static`).
-- **Live Video Wallpapers**: Requires [Smart Video Wallpaper Reborn](https://github.com/luisbocanegra/plasma-smart-video-wallpaper-reborn). Aura configures `VideoUrls`, fill mode, mute state and volume per screen; it never installs extensions or asks for root.
-- **Graceful Fallback**: If the plugin is missing, videos are shown as a high-resolution still poster with a one-click link to the plugin page.
-- **Static Wallpapers**: Applied through Plasma's stock image plugin and always available, including per-output configurations.
-- **No mpvpaper Conflicts**: Aura never launches an mpvpaper layer on Plasma, which fixes the "audio plays but the wallpaper is hidden" issue.
-
-> The `Static` backend forces still images on every desktop. On arbitrary compositors without a native image API, it uses a poster through mpvpaper as the portable fallback.
-
----
-
-## ⌨️ Shortcuts & CLI
-
-| Action | Command | Recommended Shortcut |
-|:---|:---|:---|
-| **Quick Switcher HUD** | `aura switcher` | <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>W</kbd> |
-| **Next Wallpaper** | `aura next` | <kbd>Super</kbd> + <kbd>W</kbd> |
-| **Previous Wallpaper** | `aura prev` | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> |
-| **Pause / Resume** (0% GPU) | `aura toggle-pause` | <kbd>Super</kbd> + <kbd>P</kbd> |
-| **Apply Video Directly** | `aura apply <file>` | File manager integration |
-| **Stop Wallpaper** | `aura stop` | Terminal / script |
-| **System Status** | `aura status` | Terminal health check |
-
----
-
-## 🚀 Installation
-
-### One-Line Installer (Recommended)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/antwny/aura/main/install.sh | bash
+xattr -dr com.apple.quarantine /Applications/Aura.app
 ```
 
-### Precompiled Release Package
-Download `aura-v1.10.0-x86_64-linux.tar.gz` from [GitHub Releases](https://github.com/antwny/aura/releases):
+### Con Homebrew, compilando en tu Mac
+
 ```bash
-tar -xzf aura-v1.10.0-x86_64-linux.tar.gz
-cd aura-v1.10.0-x86_64-linux
-./install.sh
+brew install proskynete/aura/aura-macos
 ```
 
-### Build from Source
+Homebrew compila la app en tu Mac, así que no hay avisos de Gatekeeper, pero tarda unos minutos y necesita las herramientas de línea de comandos de Xcode. Al terminar te muestra cómo agregarla a Launchpad y cómo hacer que se abra al iniciar sesión (`brew services start aura-macos`). Para actualizar, usa `brew upgrade aura-macos`. No se puede tener a la vez con el cask.
+
+### Desde el código
+
 ```bash
-git clone https://github.com/antwny/aura.git
-cd aura
-cargo build --release
-install -m 755 target/release/aura ~/.local/bin/aura
+git clone https://github.com/Proskynete/aura-mac.git
+cd aura-mac
+./scripts/install.sh
 ```
 
----
+El script compila, copia `Aura.app` a `~/Applications`, instala el comando `aura` en tu PATH y abre la app. Para instalar en `/Applications` usa `./scripts/install.sh --system`. Si solo quieres compilar, usa `./scripts/build.sh`; el resultado queda en `build/Aura.app`.
 
-## 📊 Performance Benchmarks
+El tema automático (cambiar el modo claro/oscuro de macOS según el fondo) viene apagado. Si lo activas en Ajustes → Apariencia, macOS te pedirá una vez permiso para que Aura controle "Eventos del Sistema".
 
-*Tested on Linux / COSMIC Desktop (AMD Ryzen 5 4500U, Radeon Graphics, Wayland Layer-Shell):*
+## Uso
 
-| Benchmark | Aura (Rust) | Legacy Python/GTK Tools | Advantage |
-|:---|:---:|:---:|:---:|
-| **Cold Startup Time** | **< 20 ms** | ~1,120 ms | **56x faster** |
-| **Idle CPU (Paused / Occluded)** | **0.00%** | 3.5% - 8.0% | **Zero battery drain** |
-| **GPU Usage When Paused** | **0.0%** | 4.0% - 10.0% | **100% GPU for games** |
-| **Desktop UI Framerate** | **60+ FPS** | 24 - 45 FPS | **Silky smooth** |
+Aura vive en la **barra de menú**. Al cerrar la ventana el fondo sigue animado y el ícono del Dock desaparece. Desde ahí tienes pausa, siguiente, anterior, volumen, rotación y el selector rápido.
 
----
+- **Biblioteca:** tus fondos locales. Puedes arrastrar videos o imágenes a la ventana para importarlos. Clic para aplicar, clic derecho para elegir pantalla, favoritos o mandarlo a la papelera.
+- **Explorar:** Bing UHD (con archivo histórico), Wallhaven, Minimalistic, MotionBGS y LiveWallpapers4Free, con búsqueda, categorías y resolución. Las descargas van a `~/Pictures/Wallpapers/Aura`.
+- **Pantallas:** el lienzo a escala de tus monitores. Ahí eliges el fondo de cada uno y el ajuste (Ajustar, Rellenar o Estirar).
+- **Selector rápido:** se abre con `⌃⌥Espacio` desde cualquier app, o con `aura switcher`. Tiene tres estilos (panal, cinemático y clásico) y se maneja con las flechas, Enter y Esc.
 
-## Acknowledgments & License
+### Terminal
 
-Aura is Free & Open Source software licensed under the **GNU General Public License v3.0** (GPL-3.0). See [LICENSE](LICENSE) for details.
+```text
+aura                      Abre la ventana
+aura next | prev          Siguiente / anterior
+aura toggle-pause         Pausa o reanuda
+aura apply <archivo> [pantalla]
+aura stop
+aura switcher
+aura volume 0-100 | aura mute
+aura mode auto|dark|light|manual
+aura status [--json]
+aura displays
+aura quit
+```
 
-Inspirations & references: [Papyrus](https://github.com/PSGtatitos/papyrus) and [skwd-wall](https://github.com/liixini/skwd-wall).
+Para asignar `aura next` a una combinación de teclas, crea un atajo en la app **Atajos** con la acción "Ejecutar script de shell".
 
-- **Community**: [@antwny on YouTube](https://www.youtube.com/@antwny) • [@antw-ny on Reddit](https://www.reddit.com/user/antw-ny/)
-- Support the project with a star on [GitHub](https://github.com/antwny/aura) ⭐ or donate via [PayPal](https://www.paypal.com/donate/?business=antwnyab@gmail.com&no_recurring=0&currency_code=USD).
+## Qué cambia respecto al original
+
+| Original (Linux / COSMIC) | En macOS |
+|---|---|
+| `mpvpaper` sobre Wayland layer-shell | Ventana a nivel de escritorio con `AVPlayerLayer`, una por pantalla |
+| VA-API / NVDEC | VideoToolbox (decodificación por hardware automática) |
+| Pausa con `SIGSTOP` al jugar | Pausa del reproductor con apps a pantalla completa o ventanas encima (por pantalla) |
+| UPower por D-Bus | IOKit (batería) + modo de bajo consumo |
+| Feral GameMode | No existe en macOS; lo cubre la pausa a pantalla completa |
+| Bandeja StatusNotifierItem | Ícono en la barra de menú |
+| Instancia única por D-Bus | Notificaciones distribuidas de macOS |
+| Acento y modo de COSMIC | Modo claro/oscuro de macOS; el acento es aproximado (macOS solo tiene 8 colores) |
+| — | Fotograma del fondo como fondo de macOS (Mission Control, pantalla de bloqueo) |
+| WebM / MKV con mpv | Conversión única a HEVC con ffmpeg (AVFoundation no lee esos formatos) |
+| Actualización desde GitHub Releases | No incluida: este port se compila localmente |
+
+Los fondos animados se ven en todos los escritorios (Spaces). En los espacios de apps a pantalla completa no se dibujan, así que ahí el video queda en pausa y no gasta GPU.
+
+## Solución de problemas
+
+- **"Aura" no se puede abrir porque es de un desarrollador no identificado:** no debería pasar si la compilaste tú. Si copiaste la app desde otro Mac, haz clic derecho → Abrir.
+- **El fondo no se mueve:** revisa en el menú si dice "En pausa" y por qué (batería, bajo consumo, ventanas encima). Puedes ajustar la sensibilidad en Ajustes → Rendimiento.
+- **Un video .webm no se reproduce:** instala ffmpeg (`brew install ffmpeg`) y vuelve a aplicarlo. La primera vez tarda un poco porque lo convierte.
+- **Recuperar tu fondo de antes:** Ajustes → Apariencia → "Restaurar el fondo original de macOS".
+
+## Desinstalar
+
+```bash
+brew uninstall --cask aura      # si la instalaste con el cask
+brew uninstall --zap --cask aura  # además borra configuración y caché
+brew uninstall aura-macos       # si la compilaste con Homebrew
+./scripts/uninstall.sh          # si la instalaste desde el código (pregunta si borrar la configuración)
+./scripts/uninstall.sh --purge  # borra configuración y caché sin preguntar
+./scripts/uninstall.sh --keep   # las conserva sin preguntar
+```
+
+Tus fondos descargados en `~/Pictures/Wallpapers/Aura` no se tocan. El fondo de macOS tampoco cambia: queda con el último fotograma que puso Aura, guardado en `~/Pictures/Wallpapers/Aura/.system-frames`.
+
+## Estructura
+
+```text
+Sources/AuraCore   Lógica sin interfaz: configuración, catálogos, paleta, IPC
+Sources/Aura       App: motor de fondos, pausa, barra de menú, selector, SwiftUI
+Sources/aura-cli   Comando `aura`
+Tests              Pruebas del núcleo con Swift Testing (./scripts/test.sh; no requiere Xcode)
+scripts            build.sh, test.sh, install.sh, uninstall.sh, render-homebrew.sh
+homebrew           Plantillas del cask y de la fórmula de Homebrew
+```
+
+La configuración se guarda en `~/Library/Application Support/Aura/config.json` y la caché en `~/Library/Caches/Aura`.
+
+## Publicar una versión en Homebrew
+
+Esto es para quien mantiene el proyecto. Homebrew instala desde un *tap*: el repositorio público [`Proskynete/homebrew-aura`](https://github.com/Proskynete/homebrew-aura), que contiene el cask (`Casks/aura.rb`) y la fórmula (`Formula/aura-macos.rb`). No hace falta ninguna cuenta en Homebrew.
+
+Para publicar una versión:
+
+1. Sube la versión en `Resources/Info.plist` (`CFBundleShortVersionString` y `CFBundleVersion`) y en `AuraConfig.currentVersion`, y agrega la entrada en `CHANGELOG.md`. Haz merge a `main`.
+2. Crea y sube el tag desde `main`:
+   ```bash
+   git tag v1.1.0 && git push origin v1.1.0
+   ```
+
+El workflow `Release (macOS)` hace el resto:
+- comprueba que el tag coincida con la versión de la app;
+- corre las pruebas;
+- compila la app universal (Apple Silicon e Intel);
+- publica `Aura-1.1.0.zip` en un GitHub Release;
+- actualiza el cask y la fórmula en el tap.
+
+Para escribir en el tap, el workflow usa una deploy key guardada en el secret `HOMEBREW_TAP_DEPLOY_KEY`.
+
+Si algún día se firma con un certificado de Apple (Apple Developer Program), basta con agregar estos secrets y el workflow firma y notariza solo:
+- `MACOS_CERTIFICATE_P12`: el certificado *Developer ID Application* en base64;
+- `MACOS_CERTIFICATE_PASSWORD`;
+- `MACOS_SIGNING_IDENTITY`;
+- `APPLE_ID`;
+- `APPLE_TEAM_ID`;
+- `APPLE_APP_PASSWORD`: una contraseña de app.
+
+Con la app firmada se puede quitar el aviso de Gatekeeper del cask y del README.
+
+## Créditos y licencia
+
+Basado en [Aura](https://github.com/antwny/aura) de **Antwny** ([YouTube](https://www.youtube.com/@antwny)): diseño, catálogos, lógica de paleta y comandos. El ícono es el del proyecto original.
+
+Se distribuye bajo **GPL-3.0-or-later**, igual que el original (ver `LICENSE`).

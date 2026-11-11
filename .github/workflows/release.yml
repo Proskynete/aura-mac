@@ -1,99 +1,115 @@
-name: Release & Binary Packaging
+name: Release (macOS)
+
+# Se dispara al subir un tag de versión, por ejemplo:
+#   git tag v1.0.0 && git push origin v1.0.0
+# Compila Aura.app universal, la publica en un GitHub Release y actualiza el
+# tap de Homebrew (cask `aura` y fórmula `aura-macos`).
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: [ "v*" ]
 
 permissions:
   contents: write
 
 jobs:
   release:
-    name: Build & Release Aura
-    runs-on: ubuntu-24.04
+    name: Compilar y publicar
+    runs-on: macos-15
+    env:
+      # Firma con Developer ID y notarización: se activan solas cuando existan
+      # estos secrets. Sin ellos la app se publica con firma ad-hoc.
+      HAS_SIGNING: ${{ secrets.MACOS_CERTIFICATE_P12 != '' }}
+      HAS_TAP_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY != '' }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install System Dependencies
+      - name: Comprobar la versión
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libxkbcommon-dev \
-            libwayland-dev \
-            desktop-file-utils \
-            appstream \
-            libmpv-dev \
-            meson \
-            ninja-build \
-            libwlroots-dev \
-            wayland-protocols \
-            libegl1-mesa-dev \
-            libglib2.0-dev
-
-      - name: Build mpvpaper Wayland Engine
-        run: |
-          git clone --depth 1 --branch 1.9 https://github.com/GhostNaN/mpvpaper.git /tmp/mpvpaper-src
-          meson setup /tmp/mpvpaper-src/build /tmp/mpvpaper-src
-          ninja -C /tmp/mpvpaper-src/build
-          mkdir -p packaging
-          cp /tmp/mpvpaper-src/build/mpvpaper packaging/mpvpaper
-          chmod +x packaging/mpvpaper
-
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-
-      - name: Extract Tag Version
-        id: get_version
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          CARGO_VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
-          if [ "$VERSION" != "$CARGO_VERSION" ]; then
-            echo "Tag v$VERSION does not match Cargo.toml version $CARGO_VERSION" >&2
+          VERSION="${GITHUB_REF_NAME#v}"
+          PLIST="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
+          CORE="$(sed -nE 's/.*currentVersion = "([^"]+)".*/\1/p' Sources/AuraCore/Config.swift)"
+          if [ "${PLIST}" != "${VERSION}" ] || [ "${CORE}" != "${VERSION}" ]; then
+            echo "::error::El tag es ${VERSION}, pero Info.plist dice ${PLIST} y AuraConfig.currentVersion dice ${CORE}."
             exit 1
           fi
-          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
 
-      - name: Validate Desktop Entry & AppStream Metadata
+      - name: Pruebas del núcleo
+        run: ./scripts/test.sh
+
+      - name: Compilar Aura.app (Apple Silicon + Intel)
+        run: ARCH=universal ./scripts/build.sh
+
+      - name: Firmar y notarizar
+        if: env.HAS_SIGNING == 'true'
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
-          desktop-file-validate resources/io.github.antwny.aura.desktop
-          appstreamcli validate --pedantic resources/io.github.antwny.aura.metainfo.xml
+          KEYCHAIN="${RUNNER_TEMP}/build.keychain-db"
+          KC_PASS="$(uuidgen)"
+          echo "${MACOS_CERTIFICATE_P12}" | base64 --decode > "${RUNNER_TEMP}/cert.p12"
+          security create-keychain -p "${KC_PASS}" "${KEYCHAIN}"
+          security set-keychain-settings -lut 3600 "${KEYCHAIN}"
+          security unlock-keychain -p "${KC_PASS}" "${KEYCHAIN}"
+          security import "${RUNNER_TEMP}/cert.p12" -k "${KEYCHAIN}" -P "${MACOS_CERTIFICATE_PASSWORD}" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "${KC_PASS}" "${KEYCHAIN}" >/dev/null
+          security list-keychains -d user -s "${KEYCHAIN}" $(security list-keychains -d user | tr -d '"')
 
-      - name: Build Release Binary
-        run: cargo build --release
+          SIGN=(codesign --force --timestamp --options runtime --keychain "${KEYCHAIN}" --sign "${MACOS_SIGNING_IDENTITY}")
+          "${SIGN[@]}" build/Aura.app/Contents/Helpers/aura
+          "${SIGN[@]}" --entitlements Resources/Aura.entitlements build/Aura.app
+          codesign --verify --strict --verbose=2 build/Aura.app
 
-      - name: Prepare Packaging Tarball
+          ditto -c -k --keepParent build/Aura.app "${RUNNER_TEMP}/notarize.zip"
+          xcrun notarytool submit "${RUNNER_TEMP}/notarize.zip" \
+            --apple-id "${APPLE_ID}" --team-id "${APPLE_TEAM_ID}" --password "${APPLE_APP_PASSWORD}" --wait
+          xcrun stapler staple build/Aura.app
+
+      - name: Empaquetar
         run: |
-          VERSION="${{ steps.get_version.outputs.VERSION }}"
-          PKG_NAME="aura-v${VERSION}-x86_64-linux"
-          mkdir -p "target/package/${PKG_NAME}"
-          cp target/release/aura "target/package/${PKG_NAME}/"
-          cp resources/io.github.antwny.aura.desktop "target/package/${PKG_NAME}/"
-          cp resources/icons/hicolor/scalable/apps/io.github.antwny.aura.svg "target/package/${PKG_NAME}/"
-          cp resources/icons/navbar-open-symbolic.svg resources/icons/navbar-closed-symbolic.svg "target/package/${PKG_NAME}/"
-          cp resources/io.github.antwny.aura.metainfo.xml "target/package/${PKG_NAME}/"
-          cp LICENSE "target/package/${PKG_NAME}/"
-          test -x packaging/mpvpaper
-          cp packaging/mpvpaper "target/package/${PKG_NAME}/"
-          cp packaging/install.sh "target/package/${PKG_NAME}/install.sh"
-          cp packaging/uninstall.sh "target/package/${PKG_NAME}/uninstall.sh"
-          chmod +x "target/package/${PKG_NAME}/install.sh"
-          chmod +x "target/package/${PKG_NAME}/uninstall.sh"
-          tar -czf "target/package/${PKG_NAME}.tar.gz" -C "target/package" "${PKG_NAME}"
-          sha256sum "target/package/${PKG_NAME}.tar.gz" | awk '{print $1}' > "target/package/${PKG_NAME}.tar.gz.sha256"
+          ZIP="Aura-${VERSION}.zip"
+          ditto -c -k --keepParent build/Aura.app "${ZIP}"
+          echo "ZIP=${ZIP}" >> "${GITHUB_ENV}"
+          echo "ZIP_SHA=$(shasum -a 256 "${ZIP}" | awk '{print $1}')" >> "${GITHUB_ENV}"
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Publicar el release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" "${ZIP}" \
+            --title "Aura ${VERSION}" --generate-notes --verify-tag
+
+      - name: Descargar el tap
+        if: env.HAS_TAP_KEY == 'true'
+        uses: actions/checkout@v4
         with:
-          files: |
-            target/package/aura-v${{ steps.get_version.outputs.VERSION }}-x86_64-linux.tar.gz
-            target/package/aura-v${{ steps.get_version.outputs.VERSION }}-x86_64-linux.tar.gz.sha256
-          generate_release_notes: true
-          body: |
-            Aura v${{ steps.get_version.outputs.VERSION }}.
+          repository: ${{ github.repository_owner }}/homebrew-aura
+          ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          path: tap
 
-            The Linux archive includes the precompiled mpvpaper 1.9 binary and a SHA-256 checksum file used by the in-app updater.
+      - name: Actualizar el tap
+        if: env.HAS_TAP_KEY == 'true'
+        run: |
+          SRC_URL="https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
+          SRC_SHA="$(curl -fsSL "${SRC_URL}" | shasum -a 256 | awk '{print $1}')"
+          ./scripts/render-homebrew.sh "${VERSION}" "${ZIP_SHA}" "${SRC_SHA}" tap
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/aura.rb Formula/aura-macos.rb
+          if git diff --cached --quiet; then
+            echo "El tap ya estaba al día."
+          else
+            git commit -m "aura ${VERSION}"
+            git push
+          fi
+
+      - name: Aviso si falta el tap
+        if: env.HAS_TAP_KEY != 'true'
+        run: echo "::warning::No está el secret HOMEBREW_TAP_DEPLOY_KEY; el tap de Homebrew no se actualizó."

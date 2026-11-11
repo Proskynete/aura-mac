@@ -1,14 +1,17 @@
-# Fórmula de Homebrew para Aura (macOS). La genera scripts/make-formula.sh
-# a partir de esta plantilla: no la edites a mano en el tap.
+# Fórmula de Homebrew para Aura (macOS): compila la app desde el código en el
+# Mac del usuario (sin avisos de Gatekeeper). Alternativa al cask `aura`.
+# La genera scripts/render-homebrew.sh a partir de esta plantilla: no la edites a mano en el tap.
 class AuraMacos < Formula
   desc "Fondos de pantalla animados nativos para macOS (port de Aura)"
   homepage "https://github.com/__USER__/__REPO__"
-  url "https://github.com/__USER__/__REPO__/archive/refs/tags/__TAG__.tar.gz"
-  sha256 "__SHA256__"
+  url "https://github.com/__USER__/__REPO__/archive/refs/tags/v__VERSION__.tar.gz"
+  sha256 "__SRC_SHA256__"
   license "GPL-3.0-or-later"
   head "https://github.com/__USER__/__REPO__.git", branch: "main"
 
   depends_on macos: :sonoma
+
+  conflicts_with cask: "__TAP__/aura"
 
   def install
     # SwiftPM no puede usar su sandbox dentro del sandbox de Homebrew.

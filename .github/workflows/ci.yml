@@ -19,8 +19,8 @@ jobs:
       - name: Pruebas del núcleo
         run: ./scripts/test.sh
 
-      - name: Compilar Aura.app
-        run: ./scripts/build.sh
+      - name: Compilar Aura.app (Apple Silicon + Intel)
+        run: ARCH=universal ./scripts/build.sh
 
       - name: Probar el comando aura
         run: build/Aura.app/Contents/Helpers/aura --version

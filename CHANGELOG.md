@@ -5,7 +5,7 @@ Todas las versiones de **Aura para macOS**. Este proyecto es un fork de
 Linux hasta la 1.10.0 está en el repositorio original y en el historial de git
 de este fork.
 
-## [1.0.0] — 2026-11-10
+## [1.0.0] — 2026-11-11
 
 Primera versión del port nativo para macOS 14+.
 
@@ -22,10 +22,14 @@ Primera versión del port nativo para macOS 14+.
 - Ícono en la barra de menú con controles y volumen.
 - Selector rápido con estilos panal, cinemático y clásico, y atajo global ⌃⌥Espacio.
 - Comando `aura` (next, prev, toggle-pause, apply, status, volume, mode…).
-- Tema claro/oscuro automático según el fondo, acento aproximado y fotograma como
-  fondo de macOS.
+- Tema claro/oscuro automático según el fondo (apagado por defecto), acento
+  aproximado y fotograma como fondo de macOS, que se mantiene aunque se desinstale Aura.
 - Conversión única de WebM, MKV y AVI con ffmpeg.
-- Instalación con `scripts/install.sh` o con Homebrew (fórmula que compila desde el código).
+- Instalación con Homebrew: cask con la app ya compilada (`brew install --cask
+  proskynete/aura/aura`) o fórmula que compila desde el código; también con
+  `scripts/install.sh`.
+- Release automático: al subir un tag `v*` se compila la app universal, se publica
+  en GitHub Releases y se actualiza el tap.
 
 ### Reemplazado respecto al original
 - El código en Rust para Linux (mpvpaper, Wayland, D-Bus, UPower, GameMode, COSMIC)

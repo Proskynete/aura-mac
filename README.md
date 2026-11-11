@@ -14,13 +14,27 @@ Las herramientas de línea de comandos de Xcode bastan para compilarlo: no neces
 
 ## Instalar
 
-### Con Homebrew
+### Con Homebrew (recomendado)
 
 ```bash
-brew install Proskynete/aura/aura-macos
+brew install --cask proskynete/aura/aura
 ```
 
-Homebrew compila la app en tu Mac, así que no hay avisos de Gatekeeper. Al terminar te muestra cómo agregarla a Launchpad y cómo hacer que se abra al iniciar sesión (`brew services start aura-macos`). Para actualizar, usa `brew upgrade aura-macos`.
+Instala `Aura.app` en `/Applications` y el comando `aura`. Para actualizar, usa `brew upgrade --cask aura`.
+
+Aura todavía no está firmada con un certificado de Apple, así que la primera vez que la abras macOS la bloqueará. Para permitirla, ve a **Ajustes del Sistema → Privacidad y seguridad → "Abrir igualmente"**. También puedes hacerlo desde la terminal:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Aura.app
+```
+
+### Con Homebrew, compilando en tu Mac
+
+```bash
+brew install proskynete/aura/aura-macos
+```
+
+Homebrew compila la app en tu Mac, así que no hay avisos de Gatekeeper, pero tarda unos minutos y necesita las herramientas de línea de comandos de Xcode. Al terminar te muestra cómo agregarla a Launchpad y cómo hacer que se abra al iniciar sesión (`brew services start aura-macos`). Para actualizar, usa `brew upgrade aura-macos`. No se puede tener a la vez con el cask.
 
 ### Desde el código
 
@@ -89,7 +103,9 @@ Los fondos animados se ven en todos los escritorios (Spaces). En los espacios de
 ## Desinstalar
 
 ```bash
-brew uninstall aura-macos       # si la instalaste con Homebrew
+brew uninstall --cask aura      # si la instalaste con el cask
+brew uninstall --zap --cask aura  # además borra configuración y caché
+brew uninstall aura-macos       # si la compilaste con Homebrew
 ./scripts/uninstall.sh          # si la instalaste desde el código (pregunta si borrar la configuración)
 ./scripts/uninstall.sh --purge  # borra configuración y caché sin preguntar
 ./scripts/uninstall.sh --keep   # las conserva sin preguntar
@@ -104,28 +120,42 @@ Sources/AuraCore   Lógica sin interfaz: configuración, catálogos, paleta, IPC
 Sources/Aura       App: motor de fondos, pausa, barra de menú, selector, SwiftUI
 Sources/aura-cli   Comando `aura`
 Tests              Pruebas del núcleo con Swift Testing (./scripts/test.sh; no requiere Xcode)
-scripts            build.sh, test.sh, install.sh, uninstall.sh, make-formula.sh
-homebrew           Plantilla de la fórmula de Homebrew
+scripts            build.sh, test.sh, install.sh, uninstall.sh, render-homebrew.sh
+homebrew           Plantillas del cask y de la fórmula de Homebrew
 ```
 
 La configuración se guarda en `~/Library/Application Support/Aura/config.json` y la caché en `~/Library/Caches/Aura`.
 
 ## Publicar una versión en Homebrew
 
-Esto es para quien mantiene el fork. Homebrew instala desde un *tap*, que es un repositorio de GitHub llamado `homebrew-aura` con la fórmula adentro.
+Esto es para quien mantiene el proyecto. Homebrew instala desde un *tap*: el repositorio público [`Proskynete/homebrew-aura`](https://github.com/Proskynete/homebrew-aura), que contiene el cask (`Casks/aura.rb`) y la fórmula (`Formula/aura-macos.rb`). No hace falta ninguna cuenta en Homebrew.
 
-1. Crea el tap una sola vez: un repositorio público `homebrew-aura` en tu cuenta, con una carpeta `Formula/`.
-2. Sube la versión al fork con un tag:
-   ```bash
-   git tag macos-v1.0.0 && git push origin macos-v1.0.0
-   ```
-3. Genera la fórmula con el checksum de ese tag:
-   ```bash
-   ./scripts/make-formula.sh 1.0.0
-   ```
-4. Copia `homebrew/Formula/aura-macos.rb` al tap, haz commit y súbelo.
+Para publicar una versión:
 
-Para cada versión nueva, sube `CFBundleShortVersionString` en `Resources/Info.plist` y `AuraConfig.currentVersion`, y repite los pasos 2 a 4.
+1. Sube la versión en `Resources/Info.plist` (`CFBundleShortVersionString` y `CFBundleVersion`) y en `AuraConfig.currentVersion`, y agrega la entrada en `CHANGELOG.md`. Haz merge a `main`.
+2. Crea y sube el tag desde `main`:
+   ```bash
+   git tag v1.1.0 && git push origin v1.1.0
+   ```
+
+El workflow `Release (macOS)` hace el resto:
+- comprueba que el tag coincida con la versión de la app;
+- corre las pruebas;
+- compila la app universal (Apple Silicon e Intel);
+- publica `Aura-1.1.0.zip` en un GitHub Release;
+- actualiza el cask y la fórmula en el tap.
+
+Para escribir en el tap, el workflow usa una deploy key guardada en el secret `HOMEBREW_TAP_DEPLOY_KEY`.
+
+Si algún día se firma con un certificado de Apple (Apple Developer Program), basta con agregar estos secrets y el workflow firma y notariza solo:
+- `MACOS_CERTIFICATE_P12`: el certificado *Developer ID Application* en base64;
+- `MACOS_CERTIFICATE_PASSWORD`;
+- `MACOS_SIGNING_IDENTITY`;
+- `APPLE_ID`;
+- `APPLE_TEAM_ID`;
+- `APPLE_APP_PASSWORD`: una contraseña de app.
+
+Con la app firmada se puede quitar el aviso de Gatekeeper del cask y del README.
 
 ## Créditos y licencia
 

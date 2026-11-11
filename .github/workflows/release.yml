@@ -1,0 +1,115 @@
+name: Release (macOS)
+
+# Se dispara al subir un tag de versión, por ejemplo:
+#   git tag v1.0.0 && git push origin v1.0.0
+# Compila Aura.app universal, la publica en un GitHub Release y actualiza el
+# tap de Homebrew (cask `aura` y fórmula `aura-macos`).
+
+on:
+  push:
+    tags: [ "v*" ]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Compilar y publicar
+    runs-on: macos-15
+    env:
+      # Firma con Developer ID y notarización: se activan solas cuando existan
+      # estos secrets. Sin ellos la app se publica con firma ad-hoc.
+      HAS_SIGNING: ${{ secrets.MACOS_CERTIFICATE_P12 != '' }}
+      HAS_TAP_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Comprobar la versión
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          PLIST="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
+          CORE="$(sed -nE 's/.*currentVersion = "([^"]+)".*/\1/p' Sources/AuraCore/Config.swift)"
+          if [ "${PLIST}" != "${VERSION}" ] || [ "${CORE}" != "${VERSION}" ]; then
+            echo "::error::El tag es ${VERSION}, pero Info.plist dice ${PLIST} y AuraConfig.currentVersion dice ${CORE}."
+            exit 1
+          fi
+          echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
+
+      - name: Pruebas del núcleo
+        run: ./scripts/test.sh
+
+      - name: Compilar Aura.app (Apple Silicon + Intel)
+        run: ARCH=universal ./scripts/build.sh
+
+      - name: Firmar y notarizar
+        if: env.HAS_SIGNING == 'true'
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          KEYCHAIN="${RUNNER_TEMP}/build.keychain-db"
+          KC_PASS="$(uuidgen)"
+          echo "${MACOS_CERTIFICATE_P12}" | base64 --decode > "${RUNNER_TEMP}/cert.p12"
+          security create-keychain -p "${KC_PASS}" "${KEYCHAIN}"
+          security set-keychain-settings -lut 3600 "${KEYCHAIN}"
+          security unlock-keychain -p "${KC_PASS}" "${KEYCHAIN}"
+          security import "${RUNNER_TEMP}/cert.p12" -k "${KEYCHAIN}" -P "${MACOS_CERTIFICATE_PASSWORD}" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "${KC_PASS}" "${KEYCHAIN}" >/dev/null
+          security list-keychains -d user -s "${KEYCHAIN}" $(security list-keychains -d user | tr -d '"')
+
+          SIGN=(codesign --force --timestamp --options runtime --keychain "${KEYCHAIN}" --sign "${MACOS_SIGNING_IDENTITY}")
+          "${SIGN[@]}" build/Aura.app/Contents/Helpers/aura
+          "${SIGN[@]}" --entitlements Resources/Aura.entitlements build/Aura.app
+          codesign --verify --strict --verbose=2 build/Aura.app
+
+          ditto -c -k --keepParent build/Aura.app "${RUNNER_TEMP}/notarize.zip"
+          xcrun notarytool submit "${RUNNER_TEMP}/notarize.zip" \
+            --apple-id "${APPLE_ID}" --team-id "${APPLE_TEAM_ID}" --password "${APPLE_APP_PASSWORD}" --wait
+          xcrun stapler staple build/Aura.app
+
+      - name: Empaquetar
+        run: |
+          ZIP="Aura-${VERSION}.zip"
+          ditto -c -k --keepParent build/Aura.app "${ZIP}"
+          echo "ZIP=${ZIP}" >> "${GITHUB_ENV}"
+          echo "ZIP_SHA=$(shasum -a 256 "${ZIP}" | awk '{print $1}')" >> "${GITHUB_ENV}"
+
+      - name: Publicar el release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" "${ZIP}" \
+            --title "Aura ${VERSION}" --generate-notes --verify-tag
+
+      - name: Descargar el tap
+        if: env.HAS_TAP_KEY == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/homebrew-aura
+          ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          path: tap
+
+      - name: Actualizar el tap
+        if: env.HAS_TAP_KEY == 'true'
+        run: |
+          SRC_URL="https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
+          SRC_SHA="$(curl -fsSL "${SRC_URL}" | shasum -a 256 | awk '{print $1}')"
+          ./scripts/render-homebrew.sh "${VERSION}" "${ZIP_SHA}" "${SRC_SHA}" tap
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/aura.rb Formula/aura-macos.rb
+          if git diff --cached --quiet; then
+            echo "El tap ya estaba al día."
+          else
+            git commit -m "aura ${VERSION}"
+            git push
+          fi
+
+      - name: Aviso si falta el tap
+        if: env.HAS_TAP_KEY != 'true'
+        run: echo "::warning::No está el secret HOMEBREW_TAP_DEPLOY_KEY; el tap de Homebrew no se actualizó."

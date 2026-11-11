@@ -1,0 +1,45 @@
+# Cask de Homebrew para Aura (macOS): instala la app ya compilada desde el
+# GitHub Release. Lo genera scripts/render-homebrew.sh a partir de esta
+# plantilla (el workflow de release lo hace solo): no lo edites a mano en el tap.
+cask "aura" do
+  version "__VERSION__"
+  sha256 "__ZIP_SHA256__"
+
+  url "https://github.com/__USER__/__REPO__/releases/download/v#{version}/Aura-#{version}.zip"
+  name "Aura"
+  desc "Live wallpapers for macOS (native port of Aura)"
+  homepage "https://github.com/__USER__/__REPO__"
+
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  depends_on macos: ">= :sonoma"
+  conflicts_with formula: "__TAP__/aura-macos"
+
+  app "Aura.app"
+  binary "#{appdir}/Aura.app/Contents/Helpers/aura"
+
+  uninstall quit: "io.github.aura.macos"
+
+  # `brew uninstall --zap` borra también la configuración y la caché.
+  # Nunca toca ~/Pictures/Wallpapers/Aura: ahí están los fondos del usuario y la
+  # imagen que macOS usa como fondo del sistema.
+  zap trash: [
+    "~/Library/Application Support/Aura",
+    "~/Library/Caches/Aura",
+    "~/Library/Preferences/io.github.aura.macos.plist",
+  ]
+
+  caveats <<~EOS
+    Aura no está firmada con un certificado de Apple. La primera vez que la abras,
+    macOS la bloqueará. Para permitirla:
+      Ajustes del Sistema → Privacidad y seguridad → "Abrir igualmente"
+    o, desde la terminal:
+      xattr -dr com.apple.quarantine "#{appdir}/Aura.app"
+
+    Opcional, para reproducir videos WebM, MKV o AVI:
+      brew install ffmpeg
+  EOS
+end

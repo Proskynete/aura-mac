@@ -7,7 +7,7 @@ cask "aura" do
 
   url "https://github.com/__USER__/__REPO__/releases/download/v#{version}/Aura-#{version}.zip"
   name "Aura"
-  desc "Live wallpapers for macOS (native port of Aura)"
+  desc "Animated desktop wallpapers (native port of Aura)"
   homepage "https://github.com/__USER__/__REPO__"
 
   livecheck do
@@ -15,8 +15,7 @@ cask "aura" do
     strategy :github_latest
   end
 
-  depends_on macos: ">= :sonoma"
-  conflicts_with formula: "__TAP__/aura-macos"
+  depends_on macos: :sonoma
 
   app "Aura.app"
   binary "#{appdir}/Aura.app/Contents/Helpers/aura"

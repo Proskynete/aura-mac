@@ -11,20 +11,12 @@ class AuraMacos < Formula
 
   depends_on macos: :sonoma
 
-  conflicts_with cask: "__TAP__/aura"
-
   def install
     # SwiftPM no puede usar su sandbox dentro del sandbox de Homebrew.
     ENV["AURA_SWIFT_FLAGS"] = "--disable-sandbox"
     system "./scripts/build.sh"
     prefix.install "build/Aura.app"
     bin.install_symlink prefix/"Aura.app/Contents/Helpers/aura"
-  end
-
-  def post_install
-    # Registra la app en macOS para que el sistema la encuentre por su identificador.
-    quiet_system "/System/Library/Frameworks/CoreServices.framework/Frameworks/" \
-                 "LaunchServices.framework/Support/lsregister", "-f", (opt_prefix/"Aura.app").to_s
   end
 
   service do
